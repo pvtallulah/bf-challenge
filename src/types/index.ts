@@ -15,3 +15,11 @@ export type Book = {
     asks: string[];
   };
 };
+
+export type BookEventsCb = {
+  type: "updateBook" | "updatePrices" | "deletePrice";
+  book?: Book;
+  side?: Side;
+  prices?: any;
+  price?: number;
+};

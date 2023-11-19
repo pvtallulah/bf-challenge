@@ -1,6 +1,6 @@
 import config from "../config";
 import _ from "lodash";
-import { Book, Side } from "../types";
+import { Book, BookEventsCb, Side } from "../types";
 
 const BOOK: Book = {
   bids: {},
@@ -17,7 +17,9 @@ const pair = "tBTCUSD";
 let connected = false;
 let connecting = false;
 
-export const connect = (cb: (book: Book) => void) => {
+export const connect = (
+  cb: ({ type, book, side, prices, price }: BookEventsCb) => void
+) => {
   const wss = new WebSocket(config.wssUrl);
 
   let subscribeMessage = JSON.stringify({
@@ -59,11 +61,12 @@ export const connect = (cb: (book: Book) => void) => {
       return;
     }
     if (BOOK.mcnt === 0) {
-      _.each(parsedMessage[1], function (pp: any) {
-        pp = { price: pp[0], cnt: pp[1], amount: pp[2] };
-        const side = pp.amount >= 0 ? "bids" : "asks";
-        pp.amount = Math.abs(pp.amount);
-        BOOK[side][pp.price] = pp;
+      _.each(parsedMessage[1], function (pp: number[]) {
+        const prices = { price: pp[0], cnt: pp[1], amount: pp[2] };
+        const side = prices.amount >= 0 ? "bids" : "asks";
+        prices.amount = Math.abs(prices.amount);
+        // BOOK[side][pp.price] = pp;
+        cb({ type: "updatePrices", side, prices });
       });
     } else {
       parsedMessage = parsedMessage[1];
@@ -78,13 +81,13 @@ export const connect = (cb: (book: Book) => void) => {
         let found = true;
         if (pp.amount > 0) {
           if (BOOK["bids"][pp.price]) {
-            delete BOOK["bids"][pp.price];
+            cb({ type: "deletePrice", side: "bids", price: pp.price });
           } else {
             found = false;
           }
         } else if (pp.amount < 0) {
           if (BOOK["asks"][pp.price]) {
-            delete BOOK["asks"][pp.price];
+            cb({ type: "deletePrice", side: "asks", price: pp.price });
           } else {
             found = false;
           }
@@ -95,7 +98,8 @@ export const connect = (cb: (book: Book) => void) => {
       } else {
         let side: Side = pp.amount >= 0 ? "bids" : "asks";
         pp.amount = Math.abs(pp.amount);
-        BOOK[side][pp.price] = pp;
+        // BOOK[side][pp.price] = pp;
+        cb({ type: "updatePrices", side, prices: [pp.price] });
       }
     }
     _.each(["bids", "asks"], function (side: Side) {
@@ -109,12 +113,14 @@ export const connect = (cb: (book: Book) => void) => {
           return +a <= +b ? -1 : 1;
         }
       });
-
-      BOOK.psnap[side] = prices;
+      cb({ type: "updatePrices", side, prices });
+      // BOOK.psnap[side] = prices;
     });
 
     BOOK.mcnt++;
-    cb(BOOK);
+    // cb({ ...BOOK });
+    cb({ type: "updateBook", book: BOOK });
+    debugger;
   };
 
   wss.onclose = () => {
