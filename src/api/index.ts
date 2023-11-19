@@ -1,5 +1,6 @@
 import config from "../config";
 import _ from "lodash";
+import { Book, Side } from "../types";
 
 const BOOK: Book = {
   bids: {},
@@ -11,43 +12,12 @@ const BOOK: Book = {
   },
 };
 
-type Side = "bids" | "asks";
-type BookItem = {
-  price: number;
-  cnt: number;
-  amount: number;
-};
-
-type Book = {
-  bids: Record<string, BookItem>;
-  asks: Record<string, BookItem>;
-  mcnt: number;
-  psnap: {
-    bids: string[];
-    asks: string[];
-  };
-};
-
-type ChannelSuscribe = {
-  chanId: number;
-  channel: string;
-  event: string;
-  freq: string;
-  len: string;
-  pair: string;
-  prec: string;
-  symbol: string;
-};
-
 const pair = "tBTCUSD";
+
 let connected = false;
 let connecting = false;
 
 const wss = new WebSocket(config.wssUrl);
-
-const initBook = (msg: ChannelSuscribe) => {
-  // pair = msg.pair;
-};
 
 let subscribeMessage = JSON.stringify({
   event: "subscribe",
@@ -56,6 +26,7 @@ let subscribeMessage = JSON.stringify({
   freq: "F1",
   prec: "P0",
   len: 100,
+  pair,
 });
 
 wss.onopen = () => {
